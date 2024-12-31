@@ -21,6 +21,9 @@ int fileStep;
 File folder;
 File[] files;
 
+
+int[][] heatmap; // ヒートマップデータ用2次元配列     AJNI
+
 void setup() {
   //フォント設定（日本語表示に対応するため）
   PFont font = createFont("Meiryo", 50);
@@ -56,26 +59,44 @@ void setup() {
   gazeDataInit();
   
   ifAuto = false; //自動再生かどうか（初期設定：手動）
+  
+  
+  //AJNI
+  heatmap = new int[gridRows][gridCols]; // 行と列ごとの視線滞在回数を記録
+  //AJNI
 }
 
 void draw() {
   background(0);
   
-  println(imgHeight, height);
+  //println(imgHeight, height); AJNI
   
   //現在の視線データの経過時間を取得
   int gazeTime = gazeData.getInt(currentStep, 0);
   
   // 現在の視線データの位置を取得
   int[] gazePos = new int[]{gazeData.getInt(currentStep, 1), gazeData.getInt(currentStep, 2)};
+  //AJNI
+  // ヒートマップデータを更新
+  if (gazePos[0] >= 0 && gazePos[0] < gridRows && gazePos[1] >= 0 && gazePos[1] < gridCols) {
+    heatmap[gazePos[0]][gazePos[1]]++; // 視線滞在回数をカウント
+  }
   
-  println(gazeTime, gazePos[0], gazePos[1]);
+  // ヒートマップの描画
+  drawHeatmap();
+  //AJNI
+  
+  
+  image(codeImage, 0, 0, imgWidth, imgHeight); // プログラム画像を描画  //println(gazeTime, gazePos[0], gazePos[1]); AJNI
 
   int x = (gazePos[1]) * imgWidth / gridCols; // 列からマーカーのx座標を計算
   int y = (gazePos[0]) * imgHeight / gridRows; // 行からマーカーのy座標を計算
-  
+  //AJNI
+  fill(255, 0, 0, 150); // 半透明の赤いマーカー
+  noStroke();
+  rect(x, y, cellWidth, cellHeight);
   //image(codeImage, 0, -(gazePos[1] / pageRows) * pageHeight, imgWidth, imgHeight); // プログラム画像を描画
-  image(codeImage, 0, 0, imgWidth, imgHeight); // プログラム画像を描画
+  //image(codeImage, 0, 0, imgWidth, imgHeight); // プログラム画像を描画  AJNI
   
   //ファイル名を描画
   fill(255);
@@ -157,4 +178,33 @@ void keyPressed() {
   if (key == 'l') {
     ifAuto = !ifAuto;
   }
+}
+//AJNI
+void drawHeatmap() {
+  noStroke();
+  for (int row = 0; row < gridRows; row++) {
+    for (int col = 0; col < gridCols; col++) {
+      int x = col * cellWidth;
+      int y = row * cellHeight;
+      
+      // 視線滞在回数を色の濃度に変換（最大値を基準に正規化）
+      float alpha = map(heatmap[row][col], 0, getMaxHeatmapValue(), 0, 255);
+      
+      // カラー設定（赤をベースに濃度を設定）
+      fill(255, 0, 0, alpha);
+      rect(x, y, cellWidth, cellHeight);
+    }
+  }
+}
+
+int getMaxHeatmapValue() {
+  int maxVal = 0;
+  for (int row = 0; row < gridRows; row++) {
+    for (int col = 0; col < gridCols; col++) {
+      if (heatmap[row][col] > maxVal) {
+        maxVal = heatmap[row][col];
+      }
+    }
+  }
+  return maxVal;
 }
