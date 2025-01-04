@@ -81,12 +81,7 @@ void draw() {
   if (gazePos[0] >= 0 && gazePos[0] < gridRows && gazePos[1] >= 0 && gazePos[1] < gridCols) {
     heatmap[gazePos[0]][gazePos[1]]++; // 視線滞在回数をカウント
   }
-  
-  // ヒートマップの描画
-  drawHeatmap();
-  //AJNI
-  
-  
+    
   image(codeImage, 0, 0, imgWidth, imgHeight); // プログラム画像を描画  //println(gazeTime, gazePos[0], gazePos[1]); AJNI
 
   int x = (gazePos[1]) * imgWidth / gridCols; // 列からマーカーのx座標を計算
@@ -97,6 +92,10 @@ void draw() {
   rect(x, y, cellWidth, cellHeight);
   //image(codeImage, 0, -(gazePos[1] / pageRows) * pageHeight, imgWidth, imgHeight); // プログラム画像を描画
   //image(codeImage, 0, 0, imgWidth, imgHeight); // プログラム画像を描画  AJNI
+  
+  // ヒートマップの描画
+  drawHeatmap();
+  //AJNI
   
   //ファイル名を描画
   fill(255);
