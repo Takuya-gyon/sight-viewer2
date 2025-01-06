@@ -21,6 +21,7 @@ int fileStep;
 File folder;
 File[] files;
 
+HashMap<String, String> q_scores; //採点結果の辞書
 
 int[][] heatmap; // ヒートマップデータ用2次元配列     AJNI
 
@@ -32,6 +33,10 @@ void setup() {
   fullScreen(2);
   //size(800, 600);
   surface.setResizable(true); // ウィンドウのサイズを可変にする
+  
+  // 問題正答ファイルを読み込み、辞書に値を保存
+  q_scores = new HashMap<String, String>();
+  loadCsvToDictionary("q_score1d.csv", q_scores);
   
    // フォルダ内の画像ファイルを取得
   folder = new File(dataPath(folderName));
@@ -100,7 +105,15 @@ void draw() {
   //ファイル名を描画
   fill(255);
   textSize(50);
-  text("現在のファイル：" + files[fileStep].getName(), 300, 50);
+  String filename = files[fileStep].getName();
+  String personQuestion = removeExtension(filename);
+  String person = split(personQuestion, "-")[0];
+  String question = split(personQuestion, "-")[1];
+  String scoreText;
+  scoreText = q_scores.get(personQuestion);
+  if(question.equals("q4")) { scoreText = "name：" + q_scores.get(person+"-q4_1") + ", age：" + q_scores.get(person+"-q4_2"); }
+  text("現在のファイル：" + filename + "\n正答：" +  scoreText, 300, 50);
+  
   
   // マーカーを描画
   fill(255, 0, 0, 150); // 半透明の赤いマーカー
@@ -178,6 +191,24 @@ void keyPressed() {
     ifAuto = !ifAuto;
   }
 }
+
+// CSVを読み込み、HashMapに保存する関数
+void loadCsvToDictionary(String filePath, HashMap<String, String> dictionary) {
+  // CSVファイルを行ごとに読み込む
+  String[] rows = loadStrings(filePath);
+  
+  // 各行を処理
+  for (String row : rows) {
+    // 行をカンマで分割
+    String[] keyValue = split(row, ',');
+    
+    // キーと値を辞書に保存
+    if (keyValue.length == 2) {
+      dictionary.put(keyValue[0].trim(), keyValue[1].trim());
+    }
+  }
+}
+
 //AJNI
 void drawHeatmap() {
   noStroke();
@@ -206,4 +237,13 @@ int getMaxHeatmapValue() {
     }
   }
   return maxVal;
+}
+
+//ファイル名から拡張子を除く関数
+String removeExtension(String filename) {
+  int dotIndex = filename.lastIndexOf(".");
+  if (dotIndex > 0) {
+    return filename.substring(0, dotIndex);
+  }
+  return filename;  // 拡張子がない場合はそのまま返す
 }
