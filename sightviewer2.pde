@@ -14,6 +14,7 @@ int pageRows = 30;
 int pageHeight;
 
 boolean ifAuto;
+boolean ifHeatmapOn;
 
 String folderName = "gazes";
 int fileCount;
@@ -64,10 +65,10 @@ void setup() {
   gazeDataInit();
   
   ifAuto = false; //自動再生かどうか（初期設定：手動）
-  
+  ifHeatmapOn = false; //ヒートマップの描画をするか（初期設定：しない）
   
   //AJNI
-  heatmap = new int[gridRows][gridCols]; // 行と列ごとの視線滞在回数を記録
+  setupHeatmap(); // ヒートマップの初期化（行と列ごとの視線滞在回数を記録）
   //AJNI
 }
 
@@ -179,6 +180,7 @@ void keyPressed() {
     if(fileStep >= fileCount){ fileStep = fileCount - 1; }
     
     gazeDataInit();
+    setupHeatmap();
   }
   if(key == 'a'){
         fileStep--;
@@ -186,9 +188,13 @@ void keyPressed() {
     if(fileStep < 0){ fileStep = 0; }
     
     gazeDataInit();
+    setupHeatmap();
   }
   if (key == 'l') {
     ifAuto = !ifAuto;
+  }
+  if (key == 'h') {
+    heatmapToggle();
   }
 }
 
@@ -209,8 +215,24 @@ void loadCsvToDictionary(String filePath, HashMap<String, String> dictionary) {
   }
 }
 
+//ヒートマップ描画の切り替え関数
+void heatmapToggle() {
+  if(ifHeatmapOn) {
+    setupHeatmap();
+  }
+  ifHeatmapOn = !ifHeatmapOn;
+}
+
+//ヒートマップ初期化
+void setupHeatmap() {
+  heatmap = new int[gridRows][gridCols]; 
+}
+
 //AJNI
 void drawHeatmap() {
+  if(!ifHeatmapOn) {
+    return;
+  }
   noStroke();
   for (int row = 0; row < gridRows; row++) {
     for (int col = 0; col < gridCols; col++) {
