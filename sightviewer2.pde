@@ -14,7 +14,6 @@ int pageRows = 30;
 int pageHeight;
 
 boolean ifAuto;
-boolean ifHeatmapOn;
 
 String folderName = "gazes";
 int fileCount;
@@ -22,7 +21,6 @@ int fileStep;
 File folder;
 File[] files;
 
-HashMap<String, String> q_scores; //採点結果の辞書
 
 int[][] heatmap; // ヒートマップデータ用2次元配列     AJNI
 
@@ -34,10 +32,6 @@ void setup() {
   fullScreen(2);
   //size(800, 600);
   surface.setResizable(true); // ウィンドウのサイズを可変にする
-  
-  // 問題正答ファイルを読み込み、辞書に値を保存
-  q_scores = new HashMap<String, String>();
-  loadCsvToDictionary("q_score1d.csv", q_scores);
   
    // フォルダ内の画像ファイルを取得
   folder = new File(dataPath(folderName));
@@ -65,10 +59,15 @@ void setup() {
   gazeDataInit();
   
   ifAuto = false; //自動再生かどうか（初期設定：手動）
-  ifHeatmapOn = false; //ヒートマップの描画をするか（初期設定：しない）
+  
   
   //AJNI
-  setupHeatmap(); // ヒートマップの初期化（行と列ごとの視線滞在回数を記録）
+  heatmap = new int[gridRows][gridCols]; // 行と列ごとの視線滞在回数を記録
+  for (int i = 0; i < fileCount; i++) {
+    processAndSaveHeatmap(i); // 各ファイルごとにヒートマップを処理し保存
+  }
+
+  gazeDataInit();
   //AJNI
 }
 
@@ -106,15 +105,7 @@ void draw() {
   //ファイル名を描画
   fill(255);
   textSize(50);
-  String filename = files[fileStep].getName();
-  String personQuestion = removeExtension(filename);
-  String person = split(personQuestion, "-")[0];
-  String question = split(personQuestion, "-")[1];
-  String scoreText;
-  scoreText = q_scores.get(personQuestion);
-  if(question.equals("q4")) { scoreText = "name：" + q_scores.get(person+"-q4_1") + ", age：" + q_scores.get(person+"-q4_2"); }
-  text("現在のファイル：" + filename + "\n正答：" +  scoreText, 300, 50);
-  
+  text("現在のファイル：" + files[fileStep].getName(), 300, 50);
   
   // マーカーを描画
   fill(255, 0, 0, 150); // 半透明の赤いマーカー
@@ -180,7 +171,6 @@ void keyPressed() {
     if(fileStep >= fileCount){ fileStep = fileCount - 1; }
     
     gazeDataInit();
-    setupHeatmap();
   }
   if(key == 'a'){
         fileStep--;
@@ -188,51 +178,19 @@ void keyPressed() {
     if(fileStep < 0){ fileStep = 0; }
     
     gazeDataInit();
-    setupHeatmap();
   }
   if (key == 'l') {
     ifAuto = !ifAuto;
   }
-  if (key == 'h') {
-    heatmapToggle();
-  }
-}
-
-// CSVを読み込み、HashMapに保存する関数
-void loadCsvToDictionary(String filePath, HashMap<String, String> dictionary) {
-  // CSVファイルを行ごとに読み込む
-  String[] rows = loadStrings(filePath);
   
-  // 各行を処理
-  for (String row : rows) {
-    // 行をカンマで分割
-    String[] keyValue = split(row, ',');
-    
-    // キーと値を辞書に保存
-    if (keyValue.length == 2) {
-      dictionary.put(keyValue[0].trim(), keyValue[1].trim());
-    }
+  //AJNI
+   if (key == 'f') {
+    displayAllHeatmaps(); // fキーで全ヒートマップを表示
   }
+  //AJNI
 }
-
-//ヒートマップ描画の切り替え関数
-void heatmapToggle() {
-  if(ifHeatmapOn) {
-    setupHeatmap();
-  }
-  ifHeatmapOn = !ifHeatmapOn;
-}
-
-//ヒートマップ初期化
-void setupHeatmap() {
-  heatmap = new int[gridRows][gridCols]; 
-}
-
 //AJNI
 void drawHeatmap() {
-  if(!ifHeatmapOn) {
-    return;
-  }
   noStroke();
   for (int row = 0; row < gridRows; row++) {
     for (int col = 0; col < gridCols; col++) {
@@ -249,7 +207,7 @@ void drawHeatmap() {
   }
 }
 
-int getMaxHeatmapValue() {
+int getMaxHeatmapValue() {//指定されたヒートマップ配列内の最大値を取得します。
   int maxVal = 0;
   for (int row = 0; row < gridRows; row++) {
     for (int col = 0; col < gridCols; col++) {
@@ -261,11 +219,64 @@ int getMaxHeatmapValue() {
   return maxVal;
 }
 
-//ファイル名から拡張子を除く関数
-String removeExtension(String filename) {
-  int dotIndex = filename.lastIndexOf(".");
-  if (dotIndex > 0) {
-    return filename.substring(0, dotIndex);
+void processAndSaveHeatmap(int fileIndex) {
+  // ファイルごとに視線データを処理してヒートマップを保存
+  Table currentGazeData = loadTable(folderName + "/" + files[fileIndex].getName(), "header");
+  int[][] currentHeatmap = new int[gridRows][gridCols];
+
+  int currentGazeCount = currentGazeData.getRowCount();
+  for (int j = 0; j < currentGazeCount; j++) {
+    int row = currentGazeData.getInt(j, 1);
+    int col = currentGazeData.getInt(j, 2);
+    if (row >= 0 && row < gridRows && col >= 0 && col < gridCols) {
+      currentHeatmap[row][col]++;
+    }
   }
-  return filename;  // 拡張子がない場合はそのまま返す
+  saveHeatmap(currentHeatmap, files[fileIndex].getName());
+}
+
+void saveHeatmap(int[][] heatmap, String filename) {// ヒートマップデータを画像として保存します
+  PGraphics pg = createGraphics(imgWidth, imgHeight);
+  pg.beginDraw();
+  pg.image(codeImage, 0, 0, imgWidth, imgHeight);
+
+  for (int row = 0; row < gridRows; row++) {
+    for (int col = 0; col < gridCols; col++) {
+      int x = col * cellWidth;
+      int y = row * cellHeight;
+      float alpha = map(heatmap[row][col], 0, getMaxValue(heatmap), 0, 255);
+      pg.fill(255, 0, 0, alpha);
+      pg.noStroke();
+      pg.rect(x, y, cellWidth, cellHeight);
+    }
+  }
+  pg.endDraw();
+  pg.save("heatmap_" + filename + ".png");
+}
+
+void displayAllHeatmaps() {
+  int totalWidth = imgWidth * fileCount;
+  PGraphics pg = createGraphics(totalWidth, imgHeight);
+  
+  pg.beginDraw();
+  for (int i = 0; i < fileCount; i++) {
+    PImage heatmapImage = loadImage("heatmap_" + files[i].getName() + ".png");
+    pg.image(heatmapImage, i * imgWidth, 0);
+  }
+  pg.endDraw();
+  
+  // フルスクリーンに描画
+  image(pg, 0, 0, width, height);
+}
+
+int getMaxValue(int[][] heatmap) {//指定されたヒートマップ配列内の最大値を取得します。
+  int maxVal = 0;
+  for (int row = 0; row < gridRows; row++) {
+    for (int col = 0; col < gridCols; col++) {
+      if (heatmap[row][col] > maxVal) {
+        maxVal = heatmap[row][col];
+      }
+    }
+  }
+  return maxVal;
 }
